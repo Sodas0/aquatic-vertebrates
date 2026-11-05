@@ -1,76 +1,38 @@
-# fishlen
+# aquatic-vertebrates (fishlen)
 
-Measure trout and salamander lengths from tray photos, and review/correct the results.
+Measure trout and salamander lengths from tray photos. Upload photos, the pipeline predicts each animal's
+midline and the ruler scale, and you review, fix or label them by hand. Reviewed photos become the ground
+truth for improving each part of the pipeline.
 
-```
-web/      React + Vite + TypeScript UI (Photos home, Review workspace)
-server/   FastAPI: REST API (contract at /docs), serves the built UI
-fishlen/  Python library: data format, geometry, storage, prediction pipeline (fishlen/pipeline/), CLI
-scripts/  one-off tools (import from the playground)
-tests/    pytest (+ e2e_review.py, a browser test run by hand)
-docs/     pipeline.md (START HERE to work on a stage), placeholders.md (what's weak), schema.md, decisions.md
-models/   model files, git-ignored: keypoints/<name>/{model.onnx, meta.json}, sam2/
-data/     project data, git-ignored: photos/, display/, thumbs/, fishlen.db
-```
+## Setup
 
-## Setup (once)
+Easiest: open this folder in Claude Code and ask *"set up this repo and run the tool"*.
+
+Or by hand, on a GPU node:
 
 ```bash
-conda env create -f environment.yml
-conda activate fishlen
-pip install -e ".[ml,dev]"            # ml = torch, transformers, SAM2, onnxruntime; dev = pytest, selenium
+conda env create -f environment.yml && conda activate fishlen
+pip install -e ".[ml,dev]"
 (cd web && npm ci && npm run build)
 ```
 
-**Model files are not in git** (the keypoint model is 114 MB, over GitHub's file limit). Put them in `models/`:
-
-```
-models/keypoints/hrnet_w32_dark_midline8_run2/{model.onnx, meta.json}
-models/sam2/sam2.1_hiera_large.pt
-```
-
-On the OSU HPC, copy them from `/nfs/hpc/share/dasso/ai-capstone/app/models/`. Or rebuild the keypoint
-model from an MMPose checkpoint with `scripts/export_keypoints_onnx.py`, and get SAM2 weights from
-https://github.com/facebookresearch/sam2. Grounding DINO downloads itself from Hugging Face on first use.
-
-Start a project from your own photos: run the server, then use **Add photos** in the UI.
+Model files aren't in git (too big). Ask Soham for the `models/` folder and put it in the repo root.
 
 ## Run
 
 ```bash
 conda activate fishlen
-cd /nfs/hpc/share/dasso/ai-capstone/app
-(cd web && npm run build)                      # after UI changes
-uvicorn server.main:app --port 8000            # -> http://localhost:8000  (API contract: /docs)
+uvicorn server.main:app --port 8000      # then open http://localhost:8000
 ```
 
-UI development with hot reload: run the server as above, then `cd web && npm run dev` and open
-http://localhost:5173 (it forwards /api to :8000).
+## Work on your part of the pipeline
 
-## Prediction pipeline and per-stage evaluation
+The pipeline is five swappable stages: detector, segmenter, classifier, ruler, keypoints.
 
-Install the model extras once: `pip install -e ".[ml,dev]"` (GPU recommended; the keypoint model also runs on CPU).
+1. Add your version as one file in `fishlen/pipeline/stages/`.
+2. Score it: `python -m fishlen.cli eval <stage> --impl <your_version>`
+3. Use it: set it in `data/pipeline.json`.
 
-```bash
-python -m fishlen.cli stages                    # implementations per stage, and which is selected
-python -m fishlen.cli predict --status new --limit 20
-python -m fishlen.cli eval ruler|detection|classifier|keypoints [--impl NAME] [--param key=value]
-```
-
-See **docs/pipeline.md** for adding a stage implementation and the evaluation loop. The keypoint model is
-exported from MMPose with `scripts/export_keypoints_onnx.py` (mmpose env); `tests/test_keypoints_onnx.py`
-checks the export reproduces MMPose exactly.
-
-## Tests
-
-```bash
-pytest                                          # backend + UI/Python length parity
-python tests/e2e_review.py http://localhost:8000 /tmp/shots   # browser tests (review, labeling);
-python tests/e2e_label.py  http://localhost:8000 /tmp/shots   # run them on a throwaway data copy
-python tests/e2e_predict.py http://localhost:8000 /tmp/shots new.jpg existing.jpg   # real models, GPU
-```
-
-## Data
-
-`FISHLEN_DATA` picks the project folder (default `data/`). First-time import from the playground:
-`python scripts/import_playground.py --playground ../playground --data data`.
+Read **[docs/pipeline.md](docs/pipeline.md)** first. **[docs/placeholders.md](docs/placeholders.md)** lists
+what's weak today and the scores to beat. More: [development](docs/development.md) ·
+[data format](docs/schema.md) · [design decisions](docs/decisions.md).
