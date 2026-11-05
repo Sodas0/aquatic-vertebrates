@@ -1,0 +1,33 @@
+[project]
+name = "fishlen"
+version = "0.1.0"
+description = "Measure fish and salamander lengths from tray photos: detection, ruler scale, midline keypoints, review UI."
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "pydantic>=2.7",
+  "python-multipart",
+  "numpy",
+  "scipy",
+  "pillow",
+]
+
+[project.optional-dependencies]
+# prediction pipeline. opencv is pinned to the version the keypoint model was trained/tested with:
+# its bilinear warp rounds differently across versions, which moves keypoints by up to ~1 px.
+ml = [
+  "torch==2.6.0",
+  "torchvision==0.21.0",
+  "transformers==5.19.0",
+  "onnxruntime==1.22.0",
+  "opencv-python-headless==4.10.0.84",
+  "SAM-2 @ git+https://github.com/facebookresearch/sam2.git@2b90b9f5ceec907a1c18123530e92e794ad901a4",
+]
+dev = ["pytest", "httpx", "selenium"]
+
+[tool.setuptools]
+packages = ["fishlen", "fishlen.pipeline", "fishlen.pipeline.stages", "server"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
