@@ -12,6 +12,10 @@ much it limits measurement quality. "Score" = current number from `python -m fis
 | **detector** `grounding_dino` | zero-shot text prompt "fish. salamander.", hand-set thresholds | debris, cables, leaves become "animals"; small/faint fish missed; no junk filter | recall 0.96, precision 0.95 |
 | **ruler** `ticks_v1` | FFT of the ruler's mm tick marks | one ruler model assumed (width 31.7 mm, ends 159 mm); fails when a fish covers it or under heavy glare; no confidence calibration | **no independent ground truth yet** |
 | **keypoints** `onnx_topdown` | HRNet-W32 + DARK fine-tuned from AP-10K | ~160 animals, one annotator, unmasked crops; fails on overlapping fish | median 1.0 %, worst 27 % length error (20 held-out animals) |
+| **keypoints** `mask_axis` | fallback when no model file: straight line along the mask | no bends, head/tail unknown, every animal flagged | — |
+
+**Missing entirely:** a mask/cropper that feeds the keypoint model clean, single-animal crops (and a model
+retrained on them), and mask/segmentation labeling in the tool (ground truth for the segmenter).
 
 ## Measurement
 

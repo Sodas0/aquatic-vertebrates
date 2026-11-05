@@ -75,3 +75,22 @@ def test_runner_chains_stages_and_keeps_hand_work():
     assert len(rec.animals) == 3 and rec.animals[1].species == 'trout' and rec.animals[1].box == (10, 10, 60, 20)
     assert rec.ruler == manual and rec.auto_ruler.method == 'test'                                  # hand ruler kept
     assert rec.animals[1].flags.touching is False
+
+
+def test_missing_model_files_fall_back_to_no_model_stages(monkeypatch):
+    from fishlen.pipeline.runner import DEFAULT_CONFIG, with_fallbacks
+    monkeypatch.setenv('FISHLEN_SAM2_CHECKPOINT', '/nonexistent/sam2.pt')
+    cfg = {k: dict(v) for k, v in DEFAULT_CONFIG.items()}
+    cfg['keypoints'] = {'impl': 'onnx_topdown', 'model': 'models/keypoints/does-not-exist'}
+    with pytest.warns(UserWarning):
+        cfg = with_fallbacks(cfg)
+    assert (cfg['keypoints']['impl'], cfg['segmenter']['impl'], cfg['ruler']['impl']) == ('mask_axis', 'none', 'none')
+
+
+def test_mask_axis_draws_a_flagged_line_along_the_mask():
+    from fishlen.pipeline import build
+    m = np.zeros((100, 200), bool)
+    m[40:60, 20:180] = True
+    r = build('keypoints', {'impl': 'mask_axis'}).predict(None, [Detection(box=(20, 40, 179, 59), score=1, mask=m)])[0]
+    assert len(r.points) == 8 and r.scores.max() == 0
+    assert abs(r.points[0][1] - 49.5) < 1 and r.points[-1][0] - r.points[0][0] > 150

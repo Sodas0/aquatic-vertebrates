@@ -36,10 +36,13 @@ python tests/e2e_predict.py http://localhost:8000 /tmp/shots new.jpg existing.jp
 
 ## Models
 
+Missing model files are not an error: `load_config` swaps in no-model stages (`mask_axis` keypoints, no
+segmenter, no automatic ruler) and warns.
+
 - Keypoints: exported from an MMPose checkpoint with `scripts/export_keypoints_onnx.py` (run in an MMPose
   environment). `tests/test_keypoints_onnx.py` checks the export reproduces MMPose.
-- SAM2 weights: https://github.com/facebookresearch/sam2 (`sam2.1_hiera_large.pt`), or set
-  `FISHLEN_SAM2_CHECKPOINT`.
+- SAM2 weights: https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt into
+  `models/sam2/`, or point `FISHLEN_SAM2_CHECKPOINT` at a copy.
 - Grounding DINO downloads from Hugging Face on first use.
 
 ## Data

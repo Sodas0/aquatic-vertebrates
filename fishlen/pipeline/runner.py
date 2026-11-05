@@ -4,7 +4,7 @@ Config: a dict {stage: {"impl": name, **params}}. DEFAULT_CONFIG is overridden b
 <project>/pipeline.json if present (only the stages it names), so a team member can point one stage at
 a new implementation without editing code.
 """
-import json, time, uuid
+import json, time, uuid, warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -25,6 +25,9 @@ DEFAULT_CONFIG = {
 }
 
 
+MODELS = Path(__file__).resolve().parent.parent.parent / 'models'
+
+
 def load_config(project_root: Optional[Path] = None, overrides: Optional[dict] = None) -> dict:
     cfg = {k: dict(v) for k, v in DEFAULT_CONFIG.items()}
     f = Path(project_root) / 'pipeline.json' if project_root else None
@@ -32,6 +35,23 @@ def load_config(project_root: Optional[Path] = None, overrides: Optional[dict] =
         cfg.update(json.loads(f.read_text()))
     if overrides:
         cfg.update(overrides)
+    return with_fallbacks(cfg)
+
+
+def with_fallbacks(cfg: dict) -> dict:
+    """Swap stages whose model files are missing for no-model fallbacks, so the pipeline always runs."""
+    from .shared import sam2_checkpoint
+    kp = cfg['keypoints']
+    if kp['impl'] == 'onnx_topdown':
+        d = Path(kp.get('model', '')) if Path(kp.get('model', '')).is_absolute() else MODELS.parent / kp.get('model', '')
+        if not (d / 'model.onnx').exists():
+            warnings.warn(f'keypoint model {d} not found: using mask_axis (straight lines, no model)')
+            cfg['keypoints'] = {'impl': 'mask_axis'}
+    if not Path(sam2_checkpoint()).exists():
+        for stage, needs_sam, fallback in (('segmenter', 'sam2_box', 'none'), ('ruler', 'ticks_v1', 'none')):
+            if cfg[stage]['impl'] == needs_sam:
+                warnings.warn(f'SAM2 weights not found ({sam2_checkpoint()}): {stage} -> {fallback}')
+                cfg[stage] = {'impl': fallback}
     return cfg
 
 

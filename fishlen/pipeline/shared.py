@@ -24,8 +24,14 @@ def grounding_dino(model_id: str = GD_ID):
 def sam2(config: str = 'configs/sam2.1/sam2.1_hiera_l.yaml', checkpoint: str = ''):
     from sam2.build_sam import build_sam2
     from sam2.sam2_image_predictor import SAM2ImagePredictor
-    ckpt = checkpoint or os.environ.get('FISHLEN_SAM2_CHECKPOINT') or str(ROOT / 'models' / 'sam2' / 'sam2.1_hiera_large.pt')
-    return SAM2ImagePredictor(build_sam2(config, ckpt, device=device()))
+    return SAM2ImagePredictor(build_sam2(config, checkpoint or sam2_checkpoint(), device=device()))
+
+
+SAM2_URL = 'https://dl.fbaipublicfiles.com/segment_anything_2/092824/sam2.1_hiera_large.pt'
+
+
+def sam2_checkpoint() -> str:
+    return os.environ.get('FISHLEN_SAM2_CHECKPOINT') or str(ROOT / 'models' / 'sam2' / 'sam2.1_hiera_large.pt')
 
 
 def gd_detect(image, prompt, box_thresh, text_thresh, nms_iou, model_id=GD_ID):
